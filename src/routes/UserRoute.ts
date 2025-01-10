@@ -25,26 +25,8 @@ const router = express.Router();
  *         - name
  *         - email
  *       example:
- *         id: d5fE_asz
  *         name: John Doe
  *         email: john.doe@example.com
- */
-
-/**
- * @swagger
- * /api/users:
- *   get:
- *     summary: Fetch all users
- *     tags: [Users]
- *     responses:
- *       200:
- *         description: The list of users
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/User'
  */
 
 /**
@@ -68,7 +50,20 @@ const router = express.Router();
  *               $ref: '#/components/schemas/User'
  */
 
+/**
+ * @swagger
+ * /api/users/{email}:
+ *   get:
+ *     summary: Fetch user by email
+ *     tags: [Users]
+ *     requestBody:
+ *       required: false
+ *     responses:
+ *       200:
+ *         description: The user details were fetched successfully
+ */
+
 router.post('/create', userController.createUserRoute);
-router.get('/', userController.getUsersRoute);
+router.get('/:email', userController.getUserByEmailRoute);
 
 export default router

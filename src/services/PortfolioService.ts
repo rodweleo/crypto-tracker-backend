@@ -18,7 +18,7 @@ async function createPortfolioEntry(req: Request | TransactionModel) {
         ({ portfolio_id, quantity, purchase_price } = req);
     }
 
-    if (quantity <= 0){
+    if (quantity <= 0) {
         Logger.error("Quantity must be positive: ")
         return null;
     }
@@ -30,63 +30,63 @@ async function createPortfolioEntry(req: Request | TransactionModel) {
     //create the transaction for the above portfolio
     const transactionData: Omit<TransactionModel, 'id' | 'created_at'> = {
         portfolio_id: portfolio_id,
-        coin: name, 
-        quantity: quantity, 
+        coin: name,
+        quantity: quantity,
         purchase_price: purchase_price
     }
-    
-   try{
 
-       const data = await TransactionService.addTransaction(transactionData);
+    try {
 
-       if(data !== null){
+        const data = await TransactionService.addTransaction(transactionData);
 
-           //CHECK IF THE COIN IS ALREADY IN THE PORTFOLIO
-           //IF THE COIN IS IN THE PORTFOLIO, UPDATE THE TOTAL QUANTITY AND THE PURCHASE PRICE
-           //ELSE, SAVE THE NEW COIN TO THE DATABASE
-           const { data: portfolioCoin, error } = await SupabaseClient
-               .from('gochapaa_users_portfolio_coins')
-               .select()
-               .eq('portfolio_id', transactionData.portfolio_id)
-               .eq('coin', transactionData.coin)
+        if (data !== null) {
 
-            if(error){
+            //CHECK IF THE COIN IS ALREADY IN THE PORTFOLIO
+            //IF THE COIN IS IN THE PORTFOLIO, UPDATE THE TOTAL QUANTITY AND THE PURCHASE PRICE
+            //ELSE, SAVE THE NEW COIN TO THE DATABASE
+            const { data: portfolioCoin, error } = await SupabaseClient
+                .from('gochapaa_users_portfolio_coins')
+                .select()
+                .eq('portfolio_id', transactionData.portfolio_id)
+                .eq('coin', transactionData.coin)
+
+            if (error) {
                 Logger.error(`Error fetching portfolio coins: ${error.message}`)
             }
 
-           if (portfolioCoin.length > 0){
+            if (portfolioCoin.length > 0) {
 
                 const updatedPortfolioCoinQuantity = portfolioCoin.quantity + transactionData.quantity;
 
                 const { data, error: updateError } = await SupabaseClient
                     .from('gochapaa_users_portfolio_coins')
-                    .update({ 
+                    .update({
                         quantity: updatedPortfolioCoinQuantity,
-                        purchase_price: transactionData.purchase_price  
+                        purchase_price: transactionData.purchase_price
                     })
                     .eq('portfolio_id', transactionData.portfolio_id)
                     .eq('coin', transactionData.coin)
                     .select()
-            
-                    if(updateError){
-                        Logger.error(`Error updating portfolio ${transactionData.portfolio_id}'s coin details: ${updateError.messafge}`)
-                    }
+
+                if (updateError) {
+                    Logger.error(`Error updating portfolio ${transactionData.portfolio_id}'s coin details: ${updateError.messafge}`)
+                }
 
                 //after the transaction is saved successfully
-               const portfolioData: PortfolioModel = await updatePortfolioInsights(transactionData.portfolio_id);
+                const portfolioData: PortfolioModel = await updatePortfolioInsights(transactionData.portfolio_id);
 
                 Logger.info(`Updated portfolio ${transactionData.portfolio_id}'s details: ${JSON.stringify(portfolioCoin)}`)
 
                 return portfolioData
 
-            } else{
+            } else {
 
                 const { data, error } = await SupabaseClient
                     .from('gochapaa_users_portfolio_coins')
                     .insert(transactionData)
                     .select();
 
-                if(error) {
+                if (error) {
                     Logger.error(`Error while saving transaction details: ${JSON.stringify(transactionData)} :  ${error.message}`)
                 }
 
@@ -96,14 +96,14 @@ async function createPortfolioEntry(req: Request | TransactionModel) {
                 Logger.info(`Updated portfolio ${transactionData.portfolio_id}'s insights: ${JSON.stringify(updatedPortfolioInsightDetails)}`)
                 return data;
             }
-       }
+        }
 
-       return data;
+        return data;
 
-   }catch(error: any){
-       Logger.error(`Error creating portfolio ${portfolio_id}'s data: ${error.message}`)
-       return []
-   }
+    } catch (error: any) {
+        Logger.error(`Error creating portfolio ${portfolio_id}'s data: ${error.message}`)
+        return []
+    }
 
 
 }
@@ -130,29 +130,72 @@ async function getUserPortfolio(req: Request, res: Response) {
         .select('*')
         .eq('user_id', user_id);
 
-    if (error){
+    if (error) {
 
-        Logger.error(`Error fetching user ${user_id}'s portfolio: ${error.message}` )
+        Logger.error(`Error fetching user ${user_id}'s portfolio: ${error.message}`)
 
     };
 
     return data;
 }
 
+async function getUserPortfolioInsights(user_id: string) {
+
+    const { data, error } = await SupabaseClient
+        .from('gochapaa_users_portfolios_insights')
+        .select('*')
+        .eq('user_id', user_id);
+
+    if (error) {
+        Logger.error(`Error fetching user ${user_id}'s portfolio insights: ${error.message}`)
+    };
+
+    return data;
+}
+
+async function deleteCoinFromUserPortfolio(portfolioId: string, coinName: string) {
+
+    try {
+
+        Logger.info(`Deleting coin ${coinName} from portfolio ${portfolioId}...`)
+
+        const { data, error } = await SupabaseClient
+            .from('gochapaa_users_portfolio_coins')
+            .delete().eq('portfolio_id', portfolioId).eq('coin', coinName);
+
+        if (error) {
+            Logger.error(`Error deleting coin from portfolio: ${error.message}`)
+        }
+
+        //after deleting the coin from the portfolio, update the portfolio insights
+        Logger.info(`Updating portfolio ${portfolioId}'s insights...`)
+        const result = await updatePortfolioInsights(portfolioId);
+
+        if (result.length === 0) {
+            Logger.info(`Error updating portfolio ${portfolioId}'s insights...`)
+        }
+
+        return result
+    } catch (error: any) {
+        Logger.error(`Error deleting coin from portfolio: ${error.message}`)
+        return null
+    }
+}
+
 async function updatePortfolioInsights(portfolioId: string) {
 
-    // Fetch all transactions for the portfolio
-    const { data: transactions, error } = await SupabaseClient
-        .from('gochapaa_users_transactions')
+    // Fetch all coins in the portfolio
+    const { data: portfolioCoins, error } = await SupabaseClient
+        .from('gochapaa_users_portfolio_coins')
         .select('quantity, purchase_price, coin')
         .eq('portfolio_id', portfolioId);
 
     if (error) {
-        Logger.error(`Error fetching transactions: ${error.message}`)
+        Logger.error(`Error fetching portfolio ${portfolioId}'s coins: ${error.message}`)
     }
 
     // Fetch current prices of cryptocurrencies
-    const cryptoNames = transactions.map((t: TransactionModel) => t.coin);
+    const cryptoNames = portfolioCoins.map((t: PortfolioCoinModel) => t.coin);
     const { data: cryptos } = await SupabaseClient
         .from('gochapaa_cryptocurrency_prices')
         .select('name, current_price')
@@ -160,7 +203,7 @@ async function updatePortfolioInsights(portfolioId: string) {
 
     // Calculate total value
     Logger.info(`Calculating portfolio ${portfolioId}'s total value...`)
-    const totalValue = transactions.reduce((sum: number, transaction: TransactionModel) => {
+    const totalValue = portfolioCoins.reduce((sum: number, transaction: TransactionModel) => {
         const crypto = cryptos.find((c: any) => c.name === transaction.coin);
         return sum + transaction.quantity * (crypto?.current_price || 0);
     }, 0);
@@ -177,19 +220,21 @@ async function updatePortfolioInsights(portfolioId: string) {
         Logger.error(`Error updating portfolio total value: ${updateError.message}`)
     }
 
+    await calculateGrowth24h(portfolioId);
+
     return data;
 };
 
-async function calculateGrowth24h (portfolioId: string){
+async function calculateGrowth24h(portfolioId: string) {
     // Fetch portfolio transactions from the last 24 hours
     const { data: transactions, error } = await SupabaseClient
-        .from('gochapaa_users_transactions')
+        .from('gochapaa_users_portfolio_coins')
         .select('quantity, purchase_price, coin, created_at')
         .eq('portfolio_id', portfolioId)
         .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
     if (error) {
-        Logger.error(`Error fetching transactions: ${error.message}`)
+        Logger.error(`Error fetching portfolio coins: ${error.message}`)
     }
 
     // Fetch current prices
@@ -200,7 +245,7 @@ async function calculateGrowth24h (portfolioId: string){
         .in('name', cryptoNames);
 
     // Calculate growth
-    const growth = transactions.reduce((sum: number, transaction: TransactionModel) => {
+    const growth = transactions.reduce((sum: number, transaction: PortfolioCoinModel) => {
         const crypto = cryptos.find((c: any) => c.name === transaction.coin);
         const currentValue = transaction.quantity * (crypto?.current_price || 0);
         const purchaseValue = transaction.quantity * transaction.purchase_price;
@@ -209,7 +254,7 @@ async function calculateGrowth24h (portfolioId: string){
 
     // Update the portfolio table
     const { error: updateError } = await SupabaseClient
-        .from('gochapaa_users_portfolios')
+        .from('gochapaa_users_portfolios_insights')
         .update({ growth_24h: growth })
         .eq('id', portfolioId);
 
@@ -220,7 +265,7 @@ async function calculateGrowth24h (portfolioId: string){
     return growth;
 };
 
-async function updatePortfolioCoinDetails(transaction: Omit<TransactionModel, "id, created_at">){
+async function updatePortfolioCoinDetails(transaction: Omit<TransactionModel, "id, created_at">) {
 
     //CHECK IF THE COIN IS ALREADY IN THE PORTFOLIO
     //IF THE COIN IS IN THE PORTFOLIO, UPDATE THE TOTAL QUANTITY AND THE PURCHASE PRICE
@@ -234,11 +279,11 @@ async function updatePortfolioCoinDetails(transaction: Omit<TransactionModel, "i
         Logger.error(`Error fetching portfolio coins: ${error.message}`)
     }
 
-    if(portfolioCoin.length === 0){
+    if (portfolioCoin.length === 0) {
         const data = await createPortfolioEntry(transaction);
-        Logger.info(`Portfolio coin created: ${JSON.stringify(data)}` )
-    } 
-    
+        Logger.info(`Portfolio coin created: ${JSON.stringify(data)}`)
+    }
+
 
     const { data, error: updateError } = await SupabaseClient
         .from('gochapaa_users_portfolio_coins')
@@ -258,11 +303,127 @@ async function updatePortfolioCoinDetails(transaction: Omit<TransactionModel, "i
 
 }
 
-module.exports = { 
-    createPortfolioEntry, 
-    getAllPortfolios, 
-    getUserPortfolio, 
+async function getPortfolioDetails(portfolioId: string) {
+
+    //first check if the portfolio exists
+    const { data: portfolio, error: portfolioError } = await SupabaseClient
+        .from('gochapaa_users_portfolios_insights')
+        .select('*')
+        .eq('id', portfolioId);
+
+    if (portfolioError) {
+        Logger.error(`Error fetching portfolio ${portfolioId}'s details: ${portfolio}`)
+    }
+
+    if (portfolio.length === 0) {
+        Logger.error(`Portfolio ${portfolioId} does not exist`)
+        return null;
+    }
+
+
+    //fetch the portfolio's coins
+    const { data: portfolioCoins, error } = await SupabaseClient
+        .from('gochapaa_users_portfolio_coins')
+        .select('*')
+        .eq('portfolio_id', portfolioId);
+
+    if (error) {
+        Logger.error(`Error fetching portfolio ${portfolioId}'s coins: ${error.message}`)
+    }
+
+    //fetch the portfolio's insights
+    const { data: portfolioInsights, error: insightsError } = await SupabaseClient
+        .from('gochapaa_users_portfolios_insights')
+        .select('total_value, growth_24h, created_at, updated_at')
+        .eq('id', portfolioId);
+
+    const portfolioData = {
+        coins: portfolioCoins,
+        insights: portfolioInsights[0],
+        timestamp: new Date()
+    }
+
+    return portfolioData;
+}
+
+async function updateCoinInPortfolio(portfolioId: string, updateBody: any) {
+
+    const { coin, quantity, purchase_price } = updateBody;
+
+    //CHECK IF THE COIN IS ALREADY IN THE PORTFOLIO
+    //IF THE COIN IS IN THE PORTFOLIO, UPDATE THE TOTAL QUANTITY AND THE PURCHASE PRICE
+    //ELSE, SAVE THE NEW COIN TO THE DATABASE
+    const { data: portfolioCoin, error } = await SupabaseClient
+        .from('gochapaa_users_portfolio_coins')
+        .select()
+        .eq('portfolio_id', portfolioId)
+        .eq('coin', coin)
+
+    if (error) {
+        Logger.error(`Error fetching portfolio coins: ${error.message}`)
+    }
+
+    if (portfolioCoin.length > 0) {
+
+        const updatedPortfolioCoinQuantity = portfolioCoin.quantity + quantity;
+
+        const { data, error: updateError } = await SupabaseClient
+            .from('gochapaa_users_portfolio_coins')
+            .update({
+                quantity: updatedPortfolioCoinQuantity,
+                purchase_price: purchase_price
+            })
+            .eq('portfolio_id', portfolioId)
+            .eq('coin', coin)
+            .select()
+
+        if (updateError) {
+            Logger.error(`Error updating portfolio ${portfolioId}'s coin details: ${updateError.message}`)
+        }
+
+        //after the transaction is saved successfully
+        const portfolioData: PortfolioModel = await updatePortfolioInsights(portfolioId);
+
+        Logger.info(`Updated portfolio ${portfolioId}'s details: ${JSON.stringify(portfolioCoin)}`)
+
+        return portfolioData
+
+    } else {
+
+        const transactionData = {
+            portfolio_id: portfolioId,
+            coin: coin,
+            quantity: quantity,
+            purchase_price: purchase_price
+        }
+
+        const { data, error } = await SupabaseClient
+            .from('gochapaa_users_portfolio_coins')
+            .insert(transactionData)
+            .select();
+
+        if (error) {
+            Logger.error(`Error while saving transaction details: ${JSON.stringify(transactionData)} :  ${error.message}`)
+        }
+
+        //after saving the portfolio coin, update the portfolio insight table
+        const updatedPortfolioInsightDetails = await updatePortfolioInsights(portfolioId);
+
+        Logger.info(`Updated portfolio ${portfolioId}'s insights: ${JSON.stringify(updatedPortfolioInsightDetails)}`)
+        return data;
+    }
+
+}
+
+module.exports = {
+    createPortfolioEntry,
+    getAllPortfolios,
+    getUserPortfolio,
+    getUserPortfolioInsights,
     updatePortfolioInsights,
     calculateGrowth24h,
-    updatePortfolioCoinDetails
+    updatePortfolioCoinDetails,
+    deleteCoinFromUserPortfolio,
+    getPortfolioDetails,
+    updateCoinInPortfolio
 };

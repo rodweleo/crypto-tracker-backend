@@ -19,11 +19,24 @@ async function getUsersRoute(req: Request, res: Response) {
         const result = await userService.getUsers();
         res.status(200).json(result);
     } catch (error: any) {
-        res.status(500).json({  });
+        res.status(500).json({});
+    }
+}
+
+async function getUserByEmailRoute(req: Request, res: Response) {
+
+    const { email } = req.params;
+
+    try {
+        const result = await userService.getUserByEmail(email);
+        res.status(200).json(result);
+    } catch (error: any) {
+        res.status(500).json({});
     }
 }
 
 module.exports = {
     createUserRoute,
     getUsersRoute,
+    getUserByEmailRoute
 };

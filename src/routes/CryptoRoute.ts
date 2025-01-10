@@ -17,9 +17,6 @@ const router = express.Router();
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Coin'
  */
 
 // router.post('/', cryptoController.fetchAndStoreCryptoPricesRoute);

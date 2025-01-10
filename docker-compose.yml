@@ -1,12 +1,15 @@
 version: '3.8'
 services:
-  app:
-    build: .
+  api:
+    build: 
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_KEY: ${SUPABASE_KEY}
+      - NODE_ENV=production
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
     volumes:
       - .:/usr/src/app
     command: node src/app.ts
