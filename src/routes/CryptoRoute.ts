@@ -1,9 +1,7 @@
-
-const express = require('express');
-const cryptoController = require('../controllers/CryptoController');
+import express from "express";
+import { buyCryptoRoute, fetchStoredLiveCryptoPricesRoute } from "../controllers/CryptoController";
 
 const router = express.Router();
-
 
 /**
  * @swagger
@@ -19,8 +17,7 @@ const router = express.Router();
  *             schema:
  */
 
-// router.post('/', cryptoController.fetchAndStoreCryptoPricesRoute);
-router.get("/live-prices", cryptoController.fetchStoredLiveCryptoPricesRoute)
-
+router.post("/buy", buyCryptoRoute);
+router.get("/live-prices", fetchStoredLiveCryptoPricesRoute);
 
 export default router;

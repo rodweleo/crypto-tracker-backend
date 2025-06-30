@@ -1,15 +1,28 @@
-version: '3.8'
+version: "3.8"
 services:
   api:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    build: .
     ports:
       - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:18
+    restart: always
     environment:
-      - NODE_ENV=production
-      - SUPABASE_URL=${SUPABASE_URL}
-      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: StreetCoder@254
+      POSTGRES_DB: crypto_store
     volumes:
-      - .:/usr/src/app
-    command: node src/app.ts
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    restart: always
+
+volumes:
+  pgdata:

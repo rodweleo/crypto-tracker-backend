@@ -1,6 +1,5 @@
-
-import express from 'express';
-const portfolioController = require('../controllers/PortfolioController');
+import express from "express";
+import { getAllPortfoliosRoute } from "../controllers/PortfolioController";
 
 const router = express.Router();
 
@@ -29,7 +28,6 @@ const router = express.Router();
  *         quantity: 2
  *         purchase_price: 94329
  */
-
 
 /**
  * @swagger
@@ -94,9 +92,8 @@ const router = express.Router();
  *         description: The portfolio details were successfully deleted from the user's portfolio
  *         content:
  *           application/json:
- *             
+ *
  */
-
 
 /**
  * @swagger
@@ -117,7 +114,7 @@ const router = express.Router();
  *         schema:
  *          type: string
  *         description: The user's portfolio id
- * 
+ *
  *     tags: [Portfolios]
  *     responses:
  *       200:
@@ -128,12 +125,6 @@ const router = express.Router();
  *               $ref: '#/components/schemas/UpdateCoinInPortfolio'
  */
 
-router.post('/create', portfolioController.createUserPortfolioRoute);
-router.get('/', portfolioController.getAllPortfoliosRoute);
-router.get('/insights', portfolioController.getAllPortfoliosRoute);
-router.get('/insights/:id', portfolioController.fetchUserPortfolioInsightsRoute);
-router.get('/:portfolioId', portfolioController.fetchPortfolioDetailsRoute);
-router.put('/:portfolioId/coins', portfolioController.updateCoinInPortfolioRoute);
-router.delete('/:portfolioId/coins/:coinName', portfolioController.deleteCoinFromUserPortfolioRoute);
+router.get("/all", getAllPortfoliosRoute);
 
-export default router
+export default router;

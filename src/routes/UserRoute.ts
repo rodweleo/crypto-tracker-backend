@@ -1,6 +1,9 @@
-
-import express from 'express';
-const userController = require('../controllers/UserController');
+import express from "express";
+import {
+  createUserRoute,
+  getAllUsersRoute,
+  getUserByEmailRoute,
+} from "../controllers/UserController";
 
 const router = express.Router();
 
@@ -63,7 +66,8 @@ const router = express.Router();
  *         description: The user details were fetched successfully
  */
 
-router.post('/create', userController.createUserRoute);
-router.get('/:email', userController.getUserByEmailRoute);
+router.get("/", getAllUsersRoute);
+router.post("/create", createUserRoute);
+router.get("/:email", getUserByEmailRoute);
 
-export default router
+export default router;

@@ -1,75 +1,93 @@
-import { User } from "../models/UserModel";
+import { PrismaClient } from "../generated/prisma";
+import logger from "../utils/logger";
 
-const SupabaseClient = require("../utils/supabaseClient")
-const Logger = require('../utils/logger')
-// Create a user
-async function createUser(userData: Omit<User, "id, created_at">) {
+const prisma = new PrismaClient();
 
-    Logger.info("Saving a new user with details: " + JSON.stringify(userData))
+/**
+ * UserService class to handle user-related operations
+ * such as creating a user, fetching all users, and fetching a user by email.
+ */
+class UserService {
+  constructor() {}
 
-    const { data, error } = await SupabaseClient.from('gochapaa_users')
-        .insert([userData])
-        .select();
+  // Create a user
+  async createUser(userData: any) {
+    logger.info("Saving a new user with details: " + JSON.stringify(userData));
 
-    if (error) {
-        Logger.error("Error creating the user: " + error.message)
+    try {
+      const result = await prisma.user.create({
+        data: {
+          name: userData.name,
+          email: userData.email,
+        },
+      });
+
+      //fetch the user details from the database
+      const savedUserDetails = await prisma.user.findUnique({
+        where: {
+          id: result.id,
+        },
+      });
+      if (!savedUserDetails) {
+        throw new Error("User not found after creation");
+      }
+      logger.info(
+        "User created successfully: " + JSON.stringify(savedUserDetails)
+      );
+
+      return savedUserDetails;
+    } catch (e: any) {
+      logger.error("Error creating user: " + e.message);
+      throw new Error("Failed to create user");
     }
+  }
 
-    const savedUserDetails: User = data[0];
-
-    //after the user is created, create the user's portfolio
-    const { data: portfolioData, error: portfolioError } = await SupabaseClient.from('gochapaa_users_portfolio_insights')
-        .insert([{ user_id: savedUserDetails.id }])
-        .select();
-
-    if (portfolioError) {
-        Logger.error("Error creating the user's portfolio: " + portfolioError.message)
-    }
-
-    return savedUserDetails;
-}
-
-// Get all users
-async function getUsers() {
-    const { data, error } = await SupabaseClient.from('gochapaa_users').select('*');
-
-    if (error) {
-        Logger.error("Error getting users: " + error.message)
-    };
-
-    if (data === null) {
+  // Get all users
+  async getUsers() {
+    try {
+      const users = await prisma.user.findMany();
+      if (!users || users.length === 0) {
+        logger.info("No users found in the database.");
         return [];
+      }
+      logger.info("Users fetched successfully: " + JSON.stringify(users));
+      return users;
+    } catch (e: any) {
+      logger.error("Error getting users: " + e.message);
+      throw new Error("Failed to get users");
     }
+  }
 
-    return data
+  async getUserByEmail(email: string) {
+    logger.info("Fetching user by email: " + email);
+    try {
+      if (!email) {
+        throw new Error("Email is required to fetch user");
+      }
+      if (typeof email !== "string") {
+        throw new Error("Email must be a string");
+      }
+      if (!email.includes("@")) {
+        throw new Error("Invalid email format");
+      }
+
+      const user = await prisma.user.findUnique({
+        where: {
+          email: email,
+        },
+      });
+
+      if (!user) {
+        logger.info("User not found with email: " + email);
+        return null;
+      }
+
+      return user;
+    } catch (e: any) {
+      logger.error("Error getting user by email: " + e.message);
+      throw new Error("Failed to get user by email");
+    }
+  }
 }
 
-const getUserByEmail = async (email: string) => {
-    const { data, error } = await SupabaseClient.from('gochapaa_users')
-        .select('*')
-        .eq('email', email).single();
-
-    if (error) {
-        Logger.error("Error getting user by email: " + error.message)
-        return null
-    }
-
-    //from the user information, fetch the portfolio information
-    //attach the portfolio id to the response
-    const { data: portfolioData, error: portfolioError } = await SupabaseClient.from('gochapaa_users_portfolios_insights')
-        .select('*')
-        .eq('user_id', data.id).single();
-
-    if (portfolioError) {
-        Logger.error("Error getting user's portfolio by email: " + portfolioError.message)
-        return null
-    }
-
-    return { ...data, portfolioId: portfolioData.id };
-};
-
-module.exports = {
-    createUser,
-    getUsers,
-    getUserByEmail
-};
+export default UserService;

@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  name        String?
+  created_at   DateTime     @default(now())
+  transactions  Transaction[]
+
+  @@map("users") 
+}
+
+model CryptoPrice {
+  id        Int      @id @default(autoincrement())
+  symbol    String
+  name      String
+  image     String
+  current_price     Float
+  timestamp DateTime @default(now())
+  transactions  Transaction[]
+
+  @@index([symbol])
+  @@map("crypto_prices")
+}
+
+model Transaction {
+  id            Int       @id @default(autoincrement())
+  user_id        Int
+  crypto_id        Int
+  type          TransactionType // "BUY" or "SELL"
+  quantity      Float
+  price_per_unit  Float     // price at the time of transaction
+  timestamp     DateTime  @default(now())
+
+  user          User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  CryptoPrice   CryptoPrice @relation(fields: [crypto_id], references: [id])
+
+  @@map("transactions") 
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+

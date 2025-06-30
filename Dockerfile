@@ -1,21 +1,20 @@
 
-FROM node:16
+FROM node:18
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package*.json ./
-
-COPY tsconfig.json ./
-COPY src ./src
-
 # Install dependencies
 RUN npm install
 
 # Copy the rest of the application code
 COPY . .
 
+# Generate Prisma client
+RUN npx prisma generate
+
 # Expose the application port (3000 by default)
 EXPOSE 3000
 
 #Run the application
-CMD ["node", "src/app.ts"]
+CMD ["npm", "run", "start"]
