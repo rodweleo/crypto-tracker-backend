@@ -22,3 +22,6 @@ build/
 /src/generated/prisma
 
 /purchase-crypto-test-results.json
+
+# Ignore test results
+/results.json
