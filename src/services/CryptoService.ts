@@ -3,9 +3,8 @@ import cache from "../utils/nodeCache";
 import axios from "axios";
 import logger from "../utils/logger";
 import RedisService from "./RedisService";
-import { PrismaClient } from "../generated/prisma";
+import { prisma } from "../utils/prisma";
 
-const prisma = new PrismaClient();
 const redisService = new RedisService();
 const CACHE_KEY = "LIVE_CRYPTO_PRICES";
 const TTL_SECONDS = 300;
@@ -108,8 +107,8 @@ class CryptoService {
     }
   }
 
-  async buyCrypto(req: any) {
-    const { user_id, coin_id, quantity, purchase_price } = req.body;
+  async buyCrypto(purchaseReq: any) {
+    const { user_id, coin_id, quantity, purchase_price } = purchaseReq;
 
     if (quantity <= 0 || purchase_price <= 0) {
       logger.error("Quantity and purchase price must be positive");
@@ -117,6 +116,10 @@ class CryptoService {
     }
 
     try {
+      logger.info(
+        `Processing purchase request: user_id=${user_id}, coin_id=${coin_id}, quantity=${quantity}, purchase_price=${purchase_price}`
+      );
+
       // Create a new transaction
       const transaction = await prisma.transaction.create({
         data: {
@@ -129,12 +132,12 @@ class CryptoService {
       });
 
       logger.info(
-        `Transaction created successfully: ${JSON.stringify(transaction)}`
+        `Transaction created successfully: ${transaction.id} for user ${user_id}`
       );
       return transaction;
     } catch (error: any) {
       logger.error(`Error buying crypto: ${error.message}`);
-      return null;
+      throw new Error(`Failed to purchase crypto: ${error.message}`);
     }
   }
 }

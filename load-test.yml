@@ -1,0 +1,14 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 30
+      arrivalRate: 10  # 10 requests per second
+scenarios:
+  - flow:
+      - post:
+          url: "/api/crypto/buy"
+          json:
+            user_id: 1
+            coin_id: 1
+            quantity: 0.00005
+            purchasePrice: 107000

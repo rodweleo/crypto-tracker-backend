@@ -1,8 +1,7 @@
 import { Request, Response } from "express";
 import logger from "../utils/logger";
-import { PrismaClient } from "../generated/prisma";
+import { prisma } from "../utils/prisma";
 
-const prisma = new PrismaClient();
 class PortfolioService {
   constructor() {}
 
