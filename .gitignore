@@ -20,3 +20,5 @@ dist/
 build/
 
 /src/generated/prisma
+
+/purchase-crypto-test-results.json

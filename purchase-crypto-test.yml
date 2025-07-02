@@ -10,5 +10,5 @@ scenarios:
           json:
             user_id: 1
             coin_id: 1
-            quantity: 0.00005
-            purchasePrice: 107000
+            quantity: 0.0005
+            purchase_price: 107000.00

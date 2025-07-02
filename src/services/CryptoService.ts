@@ -4,6 +4,7 @@ import axios from "axios";
 import logger from "../utils/logger";
 import RedisService from "./RedisService";
 import { prisma } from "../utils/prisma";
+import { delay } from "../utils/helpers";
 
 const redisService = new RedisService();
 const CACHE_KEY = "LIVE_CRYPTO_PRICES";
@@ -119,6 +120,8 @@ class CryptoService {
       logger.info(
         `Processing purchase request: user_id=${user_id}, coin_id=${coin_id}, quantity=${quantity}, purchase_price=${purchase_price}`
       );
+
+      await delay(10000);
 
       // Create a new transaction
       const transaction = await prisma.transaction.create({
