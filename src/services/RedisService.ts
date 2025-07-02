@@ -3,55 +3,73 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class RedisService {
-  /**
-   * RedisService provides methods to connect, disconnect, and perform basic operations
-   * on a Redis database.
-   */
-
-  //define a local variable to hold the Redis client instance
   private client: RedisClientType | null = null;
-  /**
-   * Constructor for RedisService.
-   * Initializes the Redis client.
-   */
-  constructor() {
-    // The client will be initialized asynchronously; call init() after instantiation
-  }
 
-  async connect() {
+  /**
+   * Connects to Redis and initializes the client instance.
+   * Reuses the connection if already established.
+   */
+  async connect(): Promise<RedisClientType> {
+    if (this.client) return this.client; // Reuse existing connection
+
     try {
-      const client = createClient({
-        url: process.env.REDIS_URL! || "redis://localhost:6379",
+      this.client = createClient({
+        url: process.env.REDIS_URL || "redis://localhost:6379",
         socket: {
-          connectTimeout: 10000, // 10 seconds
+          connectTimeout: 10000,
           reconnectStrategy: (retries) => {
             if (retries > 5) {
               return new Error("Max retries reached");
             }
-            return Math.min(retries * 1000, 3000); // Exponential backoff
+            return Math.min(retries * 1000, 3000);
           },
         },
       });
-      await client.connect();
+
+      this.client.on("error", (err) =>
+        console.error("Redis Client Error", err)
+      );
+
+      await this.client.connect();
       console.log("Connected to Redis");
-      return client;
+
+      return this.client;
     } catch (error) {
       console.error("Error connecting to Redis:", error);
       throw error;
     }
   }
 
-  async disconnect(client: RedisClientType) {
+  /**
+   * Returns the Redis client. Ensures connection is established first.
+   */
+  async getClient(): Promise<RedisClientType> {
+    if (!this.client) {
+      await this.connect();
+    }
+    return this.client!;
+  }
+
+  /**
+   * Disconnects the Redis client.
+   */
+  async disconnect(): Promise<void> {
+    if (!this.client) return;
     try {
-      await client.quit();
+      await this.client.quit();
       console.log("Disconnected from Redis");
+      this.client = null;
     } catch (error) {
       console.error("Error disconnecting from Redis:", error);
       throw error;
     }
   }
 
-  async setKey(client: RedisClientType, key: string, value: string) {
+  /**
+   * Sets a key-value pair in Redis.
+   */
+  async setKey(key: string, value: string): Promise<void> {
+    const client = await this.getClient();
     try {
       await client.set(key, value);
       console.log(`Set key ${key} with value ${value}`);
@@ -61,7 +79,11 @@ class RedisService {
     }
   }
 
-  async getKey(client: RedisClientType, key: string): Promise<string | null> {
+  /**
+   * Gets the value of a key from Redis.
+   */
+  async getKey(key: string): Promise<string | null> {
+    const client = await this.getClient();
     try {
       const value = await client.get(key);
       console.log(`Retrieved key ${key} with value ${value}`);
@@ -72,7 +94,11 @@ class RedisService {
     }
   }
 
-  async deleteKey(client: RedisClientType, key: string) {
+  /**
+   * Deletes a key from Redis.
+   */
+  async deleteKey(key: string): Promise<void> {
+    const client = await this.getClient();
     try {
       await client.del(key);
       console.log(`Deleted key ${key}`);
@@ -82,7 +108,11 @@ class RedisService {
     }
   }
 
-  async flushAll(client: RedisClientType) {
+  /**
+   * Flushes all keys in Redis.
+   */
+  async flushAll(): Promise<void> {
+    const client = await this.getClient();
     try {
       await client.flushAll();
       console.log("Flushed all keys in Redis");
